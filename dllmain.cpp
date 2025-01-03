@@ -6,6 +6,8 @@
     #include <Windows.h>
 #endif
 
+#include <iostream>
+
 
 // Get handle from the injected process
 HANDLE aoe_handle = GetCurrentProcess();
@@ -26,28 +28,40 @@ DWORD WINAPI MainThread(LPVOID param) {
 
 
 // Main DLL entry point
-BOOL APIENTRY DllMain( HMODULE hModule,
-                       DWORD  ul_reason_for_call,
-                       LPVOID lpReserved
-                     )
+// Main DLL entry point
+BOOL APIENTRY DllMain(HMODULE hModule,
+	DWORD  ul_reason_for_call,
+	LPVOID lpReserved
+)
 {
-    switch (ul_reason_for_call)
-    {
-    case DLL_PROCESS_ATTACH:
-        // Handle proxy calls to version.dll
+	switch (ul_reason_for_call)
+	{
+	case DLL_PROCESS_ATTACH:
+		// Allocate a console
+		AllocConsole();
+		FILE* f;
+		freopen_s(&f, "CONOUT$", "w", stdout);
 
-        #if PROXY
-            setupWrappers();
-        #endif
+		// Log a message
+		std::cout << "DLL loaded successfully!" << std::endl;
 
-        // Create thread
-        CreateThread(0, 0, MainThread, hModule, 0, 0);
-        break;
-    case DLL_THREAD_ATTACH:
-    case DLL_THREAD_DETACH:
-    case DLL_PROCESS_DETACH:
-        break;
-    }
-    return TRUE;
+		// Handle proxy calls to version.dll
+#if PROXY
+		setupWrappers();
+#endif
+
+		// Create thread
+		CreateThread(0, 0, MainThread, hModule, 0, 0);
+		break;
+	case DLL_THREAD_ATTACH:
+	case DLL_THREAD_DETACH:
+	case DLL_PROCESS_DETACH:
+		// Close the console when the DLL is detached
+		if (ul_reason_for_call == DLL_PROCESS_DETACH) {
+			FreeConsole();
+		}
+		break;
+	}
+	return TRUE;
 }
 
