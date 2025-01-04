@@ -1,6 +1,3 @@
-// dllmain.cpp : Defines the entry point for the DLL application.
-
-
 // If using a proxy build config, include the necessary code to proxy calls to version.dll
 #ifdef PROXY
     #include "version/version.h"
@@ -10,15 +7,18 @@
 
 #include <iostream>
 
+typedef void(__thiscall* _SendChat)(void* pThis, const char* Source);
+_SendChat SendChat;
 
 // Get handle from the injected process
 HANDLE aoe_handle = GetCurrentProcess();
-
 
 // Spawn thread to do work
 DWORD WINAPI MainThread(LPVOID param) {
     // Get base address from the injected process
 	uintptr_t base = (uintptr_t)GetModuleHandle(NULL);
+
+	SendChat = (_SendChat)(base + 0x81D70);
 
 	// Allocate a console
 	AllocConsole();
@@ -29,10 +29,19 @@ DWORD WINAPI MainThread(LPVOID param) {
 	std::cout << "DLL loaded successfully! Base address of the injected executable is: 0x" << std::hex << base << std::dec << std::endl;
 
 	// Run thread loop until END key is pressed
-	while (!GetAsyncKeyState(VK_END)) {
+	while (!GetAsyncKeyState(VK_END)) 
+	{
 		// Main thread loop
 
-		Sleep(1000);
+		if (GetAsyncKeyState(VK_HOME))
+		{
+			std::cout << "Chat pressed..." << std::endl;
+			void* pThis = *(void**)(base + 0x188144);
+
+			SendChat(pThis, "Chat Hooked");
+		}
+
+		Sleep(100);
 	}
 
 	std::cout << "Exiting..." << std::endl;
